@@ -1,0 +1,72 @@
+@startuml
+title IT–OT Integration Architecture (with Access Control annotations)
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+
+' Original zones (kept identical to CO1)
+package "OT Security Zone" as OTZone {
+  node "Factory/Plant Area" as Factory {
+    rectangle "Sensors / Actuators\n(Temp, Vibration, Flow)" as Sensors
+    rectangle "PLCs / DCS\n(Modbus RTU/TCP, Profinet)" as PLCs
+    rectangle "SCADA / HMI\n(Operator Workstations)" as SCADA
+  }
+  Sensors -down-> PLCs : Field I/O / Fieldbus
+  PLCs -down-> SCADA : Vendor drivers / OPC-DA
+}
+
+rectangle "OT Firewall\n(L3/L4 allow-list)" as OT_FW
+
+package "Industrial DMZ" as DMZ {
+  rectangle "Edge Gateway\n(Protocol Conversion; OPC-UA/MQTT)" as Edge
+  rectangle "Jump Server / Bastion\n(Admin access with MFA)\n(story: access control target)" as Bastion
+  rectangle "Patch/AV Repo Mirror\n(WSUS/Offline Updates)" as Patch
+  rectangle "ICS Historian (Optional)\n(Short-term buffer)" as Historian
+}
+
+rectangle "IT Firewall\n(NGFW/IPS)" as IT_FW
+
+package "IT Security Zone" as ITZone {
+  database "Time-series DB\n(InfluxDB / TimescaleDB)" as TSDB
+  database "Data Lake / Lakehouse\n(Object/Blob Storage)" as Datalake
+  rectangle "Messaging / Integration\n(MQTT Broker / Kafka)" as Bus
+  rectangle "ETL/Stream Processing\n(Spark/Flink/Z)" as ETL
+  rectangle "Analytics & ML\n(Databricks / Python)" as Analytics
+  rectangle "BI / Dashboards\n(Power BI)" as BI
+  rectangle "MES / MOM" as MES
+  rectangle "ERP" as ERP
+  rectangle "SIEM / SOC\n(Log Aggregation)" as SIEM
+}
+
+' Flows
+SCADA -right-> OT_FW : OPC-UA / vendor
+OT_FW -right-> Edge : OPC-UA / Modbus-TCP (converted)
+Edge -down-> Historian : Store & forward
+Edge -right-> IT_FW : MQTT over TLS / HTTPS / SFTP
+IT_FW -right-> Bus : MQTT(S) / AMQP(S)
+
+' Access control annotations (no new components added)
+note top of Bastion
+Access Control (AC) responsibilities:
+• Request validation (who/why)
+• MFA + RBAC enforcement
+• Session recording & break-glass
+• Approval logs -> SIEM
+end note
+
+Bastion ..> SIEM : Audit logs / session recordings
+Bastion -left-> SCADA : RDP/SSH via MFA (controlled)
+Bastion -left-> PLCs : Vendor tools (temporary)
+Bastion ..> "Admin Roles\n(RBAC/LDAP/AD)" : Authenticate / Authorize
+
+' Legend: Access patterns & policy
+note bottom
+Policy highlights:
+• Requests originate as BPMN process (Request -> Approve -> Provision)
+• Least privilege / time-bound access enforced
+• All approvals logged to SIEM (immutable)
+end note
+
+@enduml
