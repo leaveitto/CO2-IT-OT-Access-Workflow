@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_ITOT" targetNamespace="http://example.com/it-ot-access" exporter="Camunda Web Modeler" exporterVersion="040cb24" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
+  <bpmn:process id="it_ot_access_request" name="IT-OT Access Request" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_Request" name="Access Requested">
+      <bpmn:outgoing>Flow_start_to_mgr</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="ManagerApproval" name="Manager Approval">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="user-task" />
+        <zeebe:userTask />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_start_to_mgr</bpmn:incoming>
+      <bpmn:outgoing>Flow_mgr_to_it</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_start_to_mgr" sourceRef="StartEvent_Request" targetRef="ManagerApproval" />
+    <bpmn:userTask id="SecurityReview" name="IT/Security Review">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="user-task" />
+        <zeebe:userTask />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_mgr_to_it</bpmn:incoming>
+      <bpmn:outgoing>Flow_it_to_gateway</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_mgr_to_it" sourceRef="ManagerApproval" targetRef="SecurityReview" />
+    <bpmn:exclusiveGateway id="ApprovalGateway" name="Approved?">
+      <bpmn:incoming>Flow_it_to_gateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_it_to_gateway" sourceRef="SecurityReview" targetRef="ApprovalGateway" />
+    <bpmn:serviceTask id="ProvisionAccess" name="Provision OT Access">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="provision-access" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_notify_granted</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_yes" sourceRef="ApprovalGateway" targetRef="ProvisionAccess">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">= approved = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:serviceTask id="NotifyAccessDenied" name="Notify Access Denied">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notify-reject" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_no</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_end_reject</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_no" sourceRef="ApprovalGateway" targetRef="NotifyAccessDenied">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">= approved = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:serviceTask id="NotifyAccessGranted" name="Notify Access Granted">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notify-user" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_to_notify_granted</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_end_success</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_to_notify_granted" sourceRef="ProvisionAccess" targetRef="NotifyAccessGranted" />
+    <bpmn:endEvent id="EndSuccess" name="Access Granted">
+      <bpmn:incoming>Flow_to_end_success</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_to_end_success" sourceRef="NotifyAccessGranted" targetRef="EndSuccess" />
+    <bpmn:endEvent id="EndRejected" name="Access Denied">
+      <bpmn:incoming>Flow_to_end_reject</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_to_end_reject" sourceRef="NotifyAccessDenied" targetRef="EndRejected" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_ITOT">
+    <bpmndi:BPMNPlane id="BPMNPlane_ITOT" bpmnElement="it_ot_access_request">
+      <bpmndi:BPMNShape bpmnElement="StartEvent_Request">
+        <dc:Bounds x="150" y="140" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="ManagerApproval">
+        <dc:Bounds x="240" y="120" width="120" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="SecurityReview">
+        <dc:Bounds x="420" y="120" width="120" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="ApprovalGateway" isMarkerVisible="true">
+        <dc:Bounds x="600" y="135" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="ProvisionAccess">
+        <dc:Bounds x="720" y="80" width="140" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="NotifyAccessDenied">
+        <dc:Bounds x="720" y="200" width="140" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="NotifyAccessGranted">
+        <dc:Bounds x="920" y="80" width="140" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="EndSuccess">
+        <dc:Bounds x="1100" y="95" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="EndRejected">
+        <dc:Bounds x="920" y="215" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="Flow_start_to_mgr">
+        <di:waypoint x="186" y="158" />
+        <di:waypoint x="240" y="158" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_mgr_to_it">
+        <di:waypoint x="360" y="158" />
+        <di:waypoint x="420" y="158" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_it_to_gateway">
+        <di:waypoint x="540" y="158" />
+        <di:waypoint x="600" y="158" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_yes">
+        <di:waypoint x="625" y="135" />
+        <di:waypoint x="625" y="115" />
+        <di:waypoint x="720" y="115" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_no">
+        <di:waypoint x="625" y="185" />
+        <di:waypoint x="625" y="225" />
+        <di:waypoint x="720" y="225" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_to_notify_granted">
+        <di:waypoint x="860" y="115" />
+        <di:waypoint x="920" y="115" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_to_end_success">
+        <di:waypoint x="1060" y="115" />
+        <di:waypoint x="1100" y="115" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_to_end_reject">
+        <di:waypoint x="860" y="225" />
+        <di:waypoint x="920" y="225" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
